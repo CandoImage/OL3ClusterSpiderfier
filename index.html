@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Clustering example</title>
+  <script src="https://code.jquery.com/jquery-1.11.2.min.js"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ol3/3.7.0/ol.css" type="text/css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ol3/3.7.0/ol-debug.js"></script>
+
+</head>
+<body>
+<div class="container-fluid">
+
+  <div class="row-fluid">
+    <div class="span12">
+      <div id="map" class="map"></div>
+    </div>
+  </div>
+
+</div>
+<script>
+  var count = 1500;
+  var features = new Array(count);
+  var e = 4500000;
+  for (var i = 0; i < count; ++i) {
+    var coordinates = [2 * e * Math.random() - e, 2 * e * Math.random() - e];
+    features[i] = new ol.Feature({
+      geometry: new ol.geom.Point(coordinates),
+      name: 'f'+i
+    });
+
+    features[i].setStyle(new ol.style.Style({
+      image: new ol.style.Circle({
+        radius: 10,
+        stroke: new ol.style.Stroke({
+          color: '#fff'
+        }),
+        fill: new ol.style.Fill({
+          color: '#ff0000'
+        })
+      }),
+      text: new ol.style.Text({
+        text: 'F1',
+        fill: new ol.style.Fill({
+          color: '#fff'
+        })
+      })
+    }));
+    features[i].setId(i);
+  }
+
+  var source = new ol.source.Vector({
+    features: features
+  });
+
+  var clusterSource = new ol.source.Cluster({
+    distance: 40,
+    source: source
+  });
+
+  var styleCache = {};
+  var clusters = new ol.layer.Vector({
+    source: clusterSource,
+    style: function(feature, resolution) {
+      var size = feature.get('features').length;
+      var style = styleCache[size];
+      if (!style) {
+        style = [new ol.style.Style({
+          image: new ol.style.Circle({
+            radius: 10,
+            stroke: new ol.style.Stroke({
+              color: '#fff'
+            }),
+            fill: new ol.style.Fill({
+              color: '#3399CC'
+            })
+          }),
+          text: new ol.style.Text({
+            text: size.toString(),
+            fill: new ol.style.Fill({
+              color: '#fff'
+            })
+          })
+        })];
+        styleCache[size] = style;
+      }
+      return style;
+    }
+  });
+
+  var raster = new ol.layer.Tile({
+    source: new ol.source.MapQuest({layer: 'sat'})
+  });
+
+  var raw = new ol.layer.Vector({
+    source: source
+  });
+
+  /*-------------------------------*/
+
+  /**
+   * @constructor
+   * @extends {ol.interaction.Pointer}
+   */
+  var ClusterSpiderfier = function(options) {
+    ol.interaction.Interaction.call(this, {
+      handleEvent: ClusterSpiderfier.prototype.handleEvent.bind(this)
+    });
+
+    options = options || {};
+    this._map = options.map;
+    this.radius = options.radius || 50;
+
+    this.featureOverlay_ = new ol.layer.Vector({
+      source: new ol.source.Vector({
+        useSpatialIndex: true
+      }),
+      style: options.style,
+      updateWhileAnimating: true,
+      updateWhileInteracting: true
+    });
+
+    this.selected = null;
+  };
+  ol.inherits(ClusterSpiderfier, ol.interaction.Interaction);
+
+  ClusterSpiderfier.prototype.getFeatures = function() {
+    return this.featureOverlay_.getSource().getFeatures();
+  };
+
+  /**
+   * Remove the interaction from its current map, if any,  and attach it to a new
+   * map, if any. Pass `null` to just remove the interaction from the current map.
+   * @param {ol.Map} map Map.
+   * @api stable
+   */
+  ClusterSpiderfier.prototype.setMap = function(map) {
+    var self = this;
+    this.featureOverlay_.setMap(map);
+    this._map = map;
+
+    if (map && map.getView()) {
+      map.getView().on('change:resolution', function(evt) {
+        // close spider when zoom level changes
+        self.featureOverlay_.getSource().clear();
+      })
+    }
+  };
+
+  /**
+   * Handles the {@link ol.MapBrowserEvent map browser event} and may change the
+   * selected state of features.
+   * @param {ol.MapBrowserEvent} mapBrowserEvent Map browser event.
+   * @return {boolean} `false` to stop event propagation.
+   * @this {ol.interaction.Select}
+   * @api
+   */
+  ClusterSpiderfier.prototype.handleEvent = function(mapBrowserEvent) {
+    var map = mapBrowserEvent.map;
+    var self = this;
+
+    if (!ol.events.condition.click(mapBrowserEvent)) {
+      return true;
+    }
+
+    map.forEachFeatureAtPixel(mapBrowserEvent.pixel, function(feature, layer) {
+      // check if feature is coming from cluster source
+      var source = layer.getSource();
+      if (source instanceof ol.source.Cluster) {
+        if (self.selected !== feature) {
+          self.open(feature);
+          self.selected = feature;
+        }
+        else {
+          self.selected = null;
+          self.close();
+        }
+      }
+    });
+  };
+
+  ClusterSpiderfier.prototype.getGeometryCenterCoordinates = function(geometry) {
+    if (geometry instanceof ol.geom.Point) {
+      return geometry.getCoordinates();
+    }
+  };
+
+  ClusterSpiderfier.prototype.arrangeSpiral = function(centerFeature, features) {
+    var geometry, point, radius, step, center, t;
+    var self = this;
+    var map = this._map;
+
+    step = 0.5;
+    center = map.getPixelFromCoordinate(this.getGeometryCenterCoordinates(centerFeature.getGeometry()));
+    t = 0;
+
+    features.forEach(function(f) {
+      console.log(f);
+      radius = Math.exp(0.30635*t) * self.radius;
+      console.log(radius);
+      f.setGeometry(new ol.geom.Point(map.getCoordinateFromPixel([ center[0] + Math.sin(t)*radius, center[1] + Math.cos(t)*radius ])));
+      t += step;
+    });
+  };
+
+  ClusterSpiderfier.prototype.arrangeCircle = function(centerFeature, features) {
+    var geometry, point, radius, step, center, angle;
+    var self = this;
+    var map = this._map;
+    var extent = this.featureOverlay_.getSource().getExtent();
+
+    step = 2*Math.PI / features.length;
+    center = map.getPixelFromCoordinate(this.getGeometryCenterCoordinates(centerFeature.getGeometry()));
+    radius = this.radius;
+    angle = 0.0;
+
+    features.forEach(function(f) {
+      f.setGeometry(new ol.geom.Point(map.getCoordinateFromPixel([ center[0] + Math.sin(angle)*radius, center[1] + Math.cos(angle)*radius ])));
+      angle += step;
+    });
+  };
+
+  ClusterSpiderfier.prototype.open = function(feature) {
+    var clusterFeatures = feature.get('features');
+    var source = this.featureOverlay_.getSource();
+
+    source.clear();
+    clusterFeatures.forEach(function(f) {
+      source.addFeature(f.clone());
+    });
+
+    this.arrangeCircle(feature, source.getFeatures());
+  };
+
+  ClusterSpiderfier.prototype.close = function() {
+    var source = this.featureOverlay_.getSource();
+    source.clear();
+  };
+
+  /*-------------------------------*/
+
+  var map = new ol.Map({
+    layers: [raster, clusters],
+    renderer: 'canvas',
+    interactions: ol.interaction.defaults().extend([new ClusterSpiderfier()]),
+    target: 'map',
+    view: new ol.View({
+      center: [0, 0],
+      zoom: 2
+    })
+  });
+
+</script>
+</body>
+</html>
