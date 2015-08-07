@@ -1,3 +1,7 @@
+// OpenLayers 3 Cluster spiderfier.
+// See https://github.com/CandoImage/OL3ClusterSpiderfier
+// Version: v1.0
+
 /**
  * @constructor
  * @extends {ol.interaction.Pointer}
