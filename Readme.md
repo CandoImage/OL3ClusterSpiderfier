@@ -1,11 +1,11 @@
 # Cluster Spiderfier for Openlayers 3
 
-Parts of the code base on https://github.com/alrocar/OLSpiderfy
-
 Initial Developers:
 
 * [Kai Jauslin](https://github.com/kaij)
 * [Peter Philipp](https://github.com/das-peter)
+
+Inspired by https://github.com/alrocar/OLSpiderfy
 
 # How it works
 
