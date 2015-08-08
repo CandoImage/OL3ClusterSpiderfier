@@ -14,6 +14,7 @@ ol.interaction.ClusterSpiderfier = function(options) {
   options = options || {};
   this._map = options.map;
   this.radius = options.radius || 50;
+  this.geometry = options.geometry || 'circle';
 
   this.featureOverlay_ = new ol.layer.Vector({
     source: new ol.source.Vector({
@@ -72,6 +73,7 @@ ol.interaction.ClusterSpiderfier.prototype.handleEvent = function(mapBrowserEven
     var source = layer.getSource();
     if (source instanceof ol.source.Cluster) {
       if (self.selected !== feature) {
+        feature.set('originLayer', layer);
         self.open(feature);
         self.selected = feature;
       }
@@ -99,9 +101,9 @@ ol.interaction.ClusterSpiderfier.prototype.arrangeSpiral = function(centerFeatur
   t = 0;
 
   features.forEach(function(f) {
-    console.log(f);
+    // console.log(f);
     radius = Math.exp(0.30635*t) * self.radius;
-    console.log(radius);
+    // console.log(radius);
     f.setGeometry(new ol.geom.Point(map.getCoordinateFromPixel([ center[0] + Math.sin(t)*radius, center[1] + Math.cos(t)*radius ])));
     t += step;
   });
@@ -128,12 +130,28 @@ ol.interaction.ClusterSpiderfier.prototype.open = function(feature) {
   var clusterFeatures = feature.get('features');
   var source = this.featureOverlay_.getSource();
 
+  // Lists with one feature shouldn't trigger the opening.
+  if (clusterFeatures.length == 1) {
+    return;
+  }
+
   source.clear();
   clusterFeatures.forEach(function(f) {
+    f.set('originLayer', feature.get('originLayer'));
     source.addFeature(f.clone());
   });
 
-  this.arrangeCircle(feature, source.getFeatures());
+  switch (this.geometry) {
+    case 'spiral':
+      this.arrangeSpiral(feature, source.getFeatures());
+      break;
+
+    case 'crircle':
+    default:
+      this.arrangeCircle(feature, source.getFeatures());
+      break;
+  }
+
 };
 
 ol.interaction.ClusterSpiderfier.prototype.close = function() {
