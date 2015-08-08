@@ -14,16 +14,19 @@ ol.interaction.ClusterSpiderfier = function(options) {
   options = options || {};
   this._map = options.map;
   this.radius = options.radius || 50;
-  this.geometry = options.geometry || 'circle';
+  this.displayGeometry = options.displayGeometry || 'circle';
 
   this.featureOverlay_ = new ol.layer.Vector({
     source: new ol.source.Vector({
       useSpatialIndex: true
     }),
-    style: options.style,
     updateWhileAnimating: true,
     updateWhileInteracting: true
   });
+  if (goog.isDef(options.style) && options.style) {
+    this.featureOverlay_.set('hasOwnStyle', true);
+    this.featureOverlay_.setStyle(options.style);
+  }
 
   this.selected = null;
 };
@@ -128,21 +131,27 @@ ol.interaction.ClusterSpiderfier.prototype.arrangeCircle = function(centerFeatur
 
 ol.interaction.ClusterSpiderfier.prototype.open = function(feature) {
   var clusterFeatures = feature.get('features');
-  var source = this.featureOverlay_.getSource();
-
   // Lists with one feature shouldn't trigger the opening.
   if (clusterFeatures.length == 1) {
     return;
+  }
+  var source = this.featureOverlay_.getSource();
+  var originLayer = feature.get('originLayer');
+
+  // If our layer hasn't explicitly set a style inherit the one from the origin
+  // layer.
+  if (!this.featureOverlay_.get('hasOwnStyle') && originLayer.getStyle()) {
+    this.featureOverlay_.setStyle(originLayer.getStyle());
   }
 
   source.clear();
   clusterFeatures.forEach(function(f) {
     var cf = f.clone();
-    cf.set('originLayer', feature.get('originLayer'));
+    cf.set('originLayer', originLayer);
     source.addFeature(cf);
   });
 
-  switch (this.geometry) {
+  switch (this.displayGeometry) {
     case 'spiral':
       this.arrangeSpiral(feature, source.getFeatures());
       break;

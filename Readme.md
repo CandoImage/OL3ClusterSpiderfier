@@ -30,7 +30,7 @@ Simply add the plugin as interaction:
 
 ## Options
 
-* `geometry`: The geometry type to use for drawing the opening display: `circle` 
+* `displayGeometry`: The geometry type to use for drawing the opening display: `circle` 
 or `spiral`. Default: `circle`
 * `radius`: The radius to use when drawing the opening geometry. Default: 50
 
