@@ -137,8 +137,9 @@ ol.interaction.ClusterSpiderfier.prototype.open = function(feature) {
 
   source.clear();
   clusterFeatures.forEach(function(f) {
-    f.set('originLayer', feature.get('originLayer'));
-    source.addFeature(f.clone());
+    var cf = f.clone();
+    cf.set('originLayer', feature.get('originLayer'));
+    source.addFeature(cf);
   });
 
   switch (this.geometry) {
