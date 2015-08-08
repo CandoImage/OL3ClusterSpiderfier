@@ -27,3 +27,16 @@ Simply add the plugin as interaction:
         zoom: 2
       })
     });
+
+## Options
+
+* `geometry`: The geometry type to use for drawing the opening display: `circle` 
+or `spiral`. Default: `circle`
+* `radius`: The radius to use when drawing the opening geometry. Default: 50
+
+## Properties
+
+When accessing a spiderfied feature you can access the layer the spider 
+originates from using the property `originLayer`. Example:
+
+    feature.get('originLayer')
