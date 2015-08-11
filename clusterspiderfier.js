@@ -23,7 +23,7 @@ ol.interaction.ClusterSpiderfier = function(options) {
     updateWhileAnimating: true,
     updateWhileInteracting: true
   });
-  if (goog.isDef(options.style) && options.style) {
+  if (typeof options.style != 'undefined' && options.style) {
     this.featureOverlay_.set('hasOwnStyle', true);
     this.featureOverlay_.setStyle(options.style);
   }
