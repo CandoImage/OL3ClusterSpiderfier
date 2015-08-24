@@ -141,8 +141,8 @@ ol.interaction.ClusterSpiderfier.prototype.open = function(feature) {
   // add individual features of the cluster
   clusterFeatures.forEach(function(f) {
     var cf = f.clone();
-    cf.set(this.ns + 'originLayer', originLayer);
-    cf.set(this.ns + 'originFeature', feature);
+    cf.set('originLayer', originLayer);
+    cf.set('originFeature', feature);
     source.addFeature(cf);
   });
 
